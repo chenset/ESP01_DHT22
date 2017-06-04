@@ -4,8 +4,7 @@
 #include <ESP8266mDNS.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
-#include "SH1106Brzo.h"
-#include "SH1106Wire.h"
+#include "SSD1306Brzo.h"
 #include "images.h"
 #include <ESP8266HTTPClient.h>
 #include <TimeLib.h>
@@ -60,7 +59,7 @@ DHT dht(DHTPIN, DHTTYPE);
 // D2 -> SCL
 // SSD1306Brzo display(0x3c, D1, D2);
 // or
-SH1106Brzo display(0x3c, 0, 2);
+SSD1306Brzo display(0x3c, 0, 2);
 // SH1106Wire display2(0x3c, D3, D5);
 //
 // int counter = 1;
@@ -219,9 +218,9 @@ void setup() {
 
   // Print the IP address
   display.clear();
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
   display.setFont(Roboto_20);
-  display.drawString(10, 20,  WiFi.localIP().toString());
+  display.drawString(64, 32,  WiFi.localIP().toString());
   display.display();
 
   // init NTP UDP
@@ -241,7 +240,6 @@ void setup() {
 }
 
 void loop() {
-  delay(50);
   // OTA
   ArduinoOTA.handle();
   DHTServerResponse();
@@ -252,16 +250,16 @@ void loop() {
     timeSinceLastWeatherAPI = millis();
   }
 
-  if (millis() - timeSinceLastDHT > 10000) {
-    DHTSenserUpdate();
-    timeSinceLastDHT = millis();
-  }
+  // if (millis() - timeSinceLastDHT > 10000) {
+    // DHTSenserUpdate();
+    // timeSinceLastDHT = millis();
+  // }
 
   // Use WiFiClient class to create TCP connections
-  if (millis() - timeSinceLastHttpRequest > 900000) {
-    DHTSenserPost();
-    timeSinceLastHttpRequest = millis();
-  }
+  // if (millis() - timeSinceLastHttpRequest > 900000) {
+    // DHTSenserPost();
+    // timeSinceLastHttpRequest = millis();
+  // }
 
   if (millis() - timeSinceLastClock > 1000) {
     OLEDDisplayCtl();
@@ -469,8 +467,8 @@ void DHTSenserUpdate() {
 
   if (localHumidity != 0.00 || localTemperature != 0.00) {
     //偏差修正
-    humidity = localHumidity;
-    temperature = localTemperature - 4.30;
+    humidity = localHumidity - 9.0;
+    temperature = localTemperature - 0.5;
   }
 }
 
