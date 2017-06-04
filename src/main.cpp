@@ -241,6 +241,7 @@ void setup() {
 }
 
 void loop() {
+  delay(50);
   // OTA
   ArduinoOTA.handle();
   DHTServerResponse();
@@ -469,7 +470,7 @@ void DHTSenserUpdate() {
   if (localHumidity != 0.00 || localTemperature != 0.00) {
     //偏差修正
     humidity = localHumidity;
-    temperature = localTemperature - 3.00;
+    temperature = localTemperature - 4.30;
   }
 }
 
