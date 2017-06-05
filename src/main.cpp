@@ -9,6 +9,9 @@
 #include <ESP8266HTTPClient.h>
 #include <TimeLib.h>
 
+//only define const char *ssid & const char *password in env.h
+#include "env.h"
+
 // static const uint8_t D0   = 16;
 // static const uint8_t D1   = 5;
 // static const uint8_t D2   = 4;
@@ -30,8 +33,8 @@ String chipName = "KAWAII";
 
 // WIFI
 const char *host = chipName.c_str();
-const char *ssid = "deny-2.4G";
-const char *password = "960902463";
+// const char *ssid = ""; move to env.h
+// const char *password = ""; move to env.h
 
 // NTP time server
 // const char *ntpServerName = "time.nist.gov";
