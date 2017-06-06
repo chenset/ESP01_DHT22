@@ -53,9 +53,9 @@ const int timeZone = +8;
 
 
 // DHT sensor settings
-#define DHTPIN 5     // what digital pin we're connected to
-#define DHTTYPE DHT22 // DHT 22  (AM2302), AM2321
-DHT dht(DHTPIN, DHTTYPE);
+// #define DHTPIN 5     // what digital pin we're connected to
+// #define DHTTYPE DHT22 // DHT 22  (AM2302), AM2321
+// DHT dht(DHTPIN, DHTTYPE);
 
 // Initialize the OLED display using brzo_i2c
 // D1 -> SDA
@@ -148,7 +148,7 @@ float temperature = 0.00;
 void OLEDDisplayCtl();
 // void OLEDDisplay2Ctl();
 void DHTSenserPost();
-void DHTSenserUpdate();
+// void DHTSenserUpdate();
 void weatherUpdate();
 void DHTServerResponse();
 void sendNTPpacket(IPAddress &address);
@@ -222,9 +222,10 @@ void setup() {
   // Print the IP address
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-  display.setFont(Roboto_20);
+  display.setFont(Roboto_10);
   display.drawString(64, 32,  WiFi.localIP().toString());
   display.display();
+  delay(500);
 
   // init NTP UDP
   Udp.begin(localPort);
@@ -236,7 +237,7 @@ void setup() {
   // DHT WEB Server begin
   DHTServer.begin();
   // DHT
-  dht.begin();
+  // dht.begin();
 
   // weather update
   weatherUpdate();
@@ -317,15 +318,26 @@ void OLEDDisplayCtl() {
   // display.setFont(Meteocons_Plain_21);
   // display.drawString(0, 0, weatherImgMapping[weatherImg]);
 
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(Roboto_14);
-  display.drawString(0, 3, Months[month() - 1] + ". " + (String)day() + ", " +
-                               (String)year());
+  // display.setTextAlignment(TEXT_ALIGN_LEFT);
+  // display.setFont(Roboto_14);
+  // display.drawString(0, 3, Months[month() - 1] + ". " + (String)day() + ", " +
+  //                              (String)year());
 
   // date
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(Roboto_14);
   display.drawString(128, 3, weekDay[weekday() - 1]);
+
+  // weather API weather
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(Roboto_14);
+  display.drawString(26, 3, (String)temperatureOnline + " / " +
+                                 (String)humidityOnline);
+
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(Meteocons_Plain_21);
+  display.drawString(0, 0, weatherImgMapping[weatherImg]);
+
 
   // clock
   display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -460,20 +472,20 @@ void weatherUpdate() {
   http.end();
 }
 
-void DHTSenserUpdate() {
-  double localHumidity = dht.readHumidity();
-  double localTemperature = dht.readTemperature();
-
-  if (isnan(localHumidity) || isnan(localTemperature)) {
-    return;
-  }
-
-  if (localHumidity != 0.00 || localTemperature != 0.00) {
-    //偏差修正
-    humidity = localHumidity - 9.0;
-    temperature = localTemperature - 0.5;
-  }
-}
+// void DHTSenserUpdate() {
+//   double localHumidity = dht.readHumidity();
+//   double localTemperature = dht.readTemperature();
+//
+//   if (isnan(localHumidity) || isnan(localTemperature)) {
+//     return;
+//   }
+//
+//   if (localHumidity != 0.00 || localTemperature != 0.00) {
+//     //偏差修正
+//     humidity = localHumidity - 9.0;
+//     temperature = localTemperature - 0.5;
+//   }
+// }
 
 void DHTSenserPost() {
   WiFiClient client;
