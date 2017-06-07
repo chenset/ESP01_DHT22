@@ -1,7 +1,6 @@
 #include <ArduinoOTA.h>
 #include <DHT.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266Ping.h>
 #include <ESP8266mDNS.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
@@ -52,10 +51,12 @@ unsigned int localPort = 8888; // local port to listen for UDP packets
 // Time Zone
 const int timeZone = +8;
 
-//icmp ping
-const char* icmpPingDomain = envIcmpPingDomain;
-String pingTimeStr = "PING";
-void icmpPing();
+//web benchkmark
+const char* webBenchmarkUrl = envWebBenchmarkUrl;
+const char* webBenchmarkFingerprint = envWebBenchmarkFingerprint;
+String webBenchmarkHTTPCodeStr = "-";
+String webBenchmarkStr = "WEB";
+void webBenchmark();
 
 // DHT sensor settings
 // #define DHTPIN 5     // what digital pin we're connected to
@@ -144,7 +145,7 @@ unsigned long timeSinceLastHttpRequest = 0;
 unsigned long timeSinceLastClock = 0;
 // unsigned long timeDisplay2LastClock = 0;
 unsigned long timeSinceLastDHT = 0;
-unsigned long timeSinceLastPing = 0;
+unsigned long timeSinceLastWEB = 0;
 unsigned long timeSinceLastWeatherAPI = 0;
 
 // DHT variables
@@ -254,15 +255,22 @@ void loop() {
   ArduinoOTA.handle();
   DHTServerResponse();
 
+  // OLED refresh
+  if (millis() - timeSinceLastClock >= 1000) {
+  // delay(1000);
+    OLEDDisplayCtl();
+    timeSinceLastClock = millis();
+  }
+
   // juhe weather API
   if (millis() - timeSinceLastWeatherAPI >= 3600000) {
     weatherUpdate();
     timeSinceLastWeatherAPI = millis();
   }
 
-  if (millis() - timeSinceLastPing >= 10000) {
-    icmpPing();
-    timeSinceLastPing = millis();
+  if (millis() - timeSinceLastWEB >= 10000) {
+    webBenchmark();
+    timeSinceLastWEB = millis();
   }
 
   // if (millis() - timeSinceLastDHT > 10000) {
@@ -275,12 +283,6 @@ void loop() {
     // DHTSenserPost();
     // timeSinceLastHttpRequest = millis();
   // }
-
-  if (millis() - timeSinceLastClock >= 1000) {
-  // delay(1000);
-    OLEDDisplayCtl();
-    timeSinceLastClock = millis();
-  }
 
   // if (millis() - timeDisplay2LastClock > 10000) {
     // OLEDDisplay2Ctl();
@@ -321,14 +323,14 @@ void loop() {
 //   display2.display();
 // }
 
-void icmpPing(){
-      bool ret = Ping.ping(icmpPingDomain, 1);
-      if(ret){
-         pingTimeStr = (String)Ping.averageTime();
-      }else{
-         pingTimeStr = "FAILED";
-      }
-}
+// void icmpPing(){
+//       bool ret = Ping.ping(icmpPingDomain, 1);
+//       if(ret){
+//          pingTimeStr = (String)Ping.averageTime();
+//       }else{
+//          pingTimeStr = "FAILED";
+//       }
+// }
 
 void OLEDDisplayCtl() {
 
@@ -361,11 +363,15 @@ void OLEDDisplayCtl() {
   // center area
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
   display.setFont(Roboto_Black_32);
-  display.drawString(64, 34, pingTimeStr);
+  display.drawString(64, 34, webBenchmarkStr);
 
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(Roboto_10);
   display.drawString(128, 34, "ms");
+
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(Roboto_10);
+  display.drawString(0, 34, webBenchmarkHTTPCodeStr);
 
   // clock
   // display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -431,6 +437,30 @@ void OLEDDisplayCtl() {
   display.drawString(128, 48, hourStr + ":" + minuteStr + ":" + secondStr);
 
   display.display();
+}
+
+
+void webBenchmark() {
+  HTTPClient http;
+  if(webBenchmarkFingerprint == ""){
+      http.begin(webBenchmarkUrl); // HTTP
+  }else{
+      http.begin(webBenchmarkUrl, webBenchmarkFingerprint); // HTTPS
+  }
+  http.setUserAgent("WEB benchmarks from " + chipName);
+  http.addHeader("Accept-Encoding", "gzip, deflate, sdch");
+
+  // start connection and send HTTP header
+  unsigned long start =  millis();
+  int httpCode = http.GET();
+
+  if(httpCode > 0) {
+    webBenchmarkHTTPCodeStr = (String)httpCode;
+  } else {
+    webBenchmarkHTTPCodeStr = "FAILED";
+  }
+  webBenchmarkStr = (String) (millis() - start);
+  http.end();
 }
 
 void DHTServerResponse() {
