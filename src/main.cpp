@@ -442,10 +442,13 @@ void OLEDDisplayCtl() {
 
 void webBenchmark() {
   HTTPClient http;
+  int fix;
   if(webBenchmarkFingerprint == ""){
       http.begin(webBenchmarkUrl); // HTTP
+      fix = 0;
   }else{
       http.begin(webBenchmarkUrl, webBenchmarkFingerprint); // HTTPS
+      fix = 400;
   }
   http.setUserAgent("WEB benchmarks from " + chipName);
   http.addHeader("Accept-Encoding", "gzip, deflate, sdch");
@@ -459,7 +462,8 @@ void webBenchmark() {
   } else {
     webBenchmarkHTTPCodeStr = "FAILED";
   }
-  webBenchmarkStr = (String) (millis() - start);
+  
+  webBenchmarkStr = (String) (millis() - start - fix);
   http.end();
 }
 
