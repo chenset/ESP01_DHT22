@@ -1,6 +1,7 @@
 #include <ArduinoOTA.h>
 #include <DHT.h>
 #include <ESP8266WiFi.h>
+#include <ESP8266Ping.h>
 #include <ESP8266mDNS.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
@@ -51,6 +52,10 @@ unsigned int localPort = 8888; // local port to listen for UDP packets
 // Time Zone
 const int timeZone = +8;
 
+//icmp ping
+const char* icmpPingDomain = envIcmpPingDomain;
+String pingTimeStr = "PING";
+void icmpPing();
 
 // DHT sensor settings
 // #define DHTPIN 5     // what digital pin we're connected to
@@ -139,6 +144,7 @@ unsigned long timeSinceLastHttpRequest = 0;
 unsigned long timeSinceLastClock = 0;
 // unsigned long timeDisplay2LastClock = 0;
 unsigned long timeSinceLastDHT = 0;
+unsigned long timeSinceLastPing = 0;
 unsigned long timeSinceLastWeatherAPI = 0;
 
 // DHT variables
@@ -222,7 +228,7 @@ void setup() {
   // Print the IP address
   display.clear();
   display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-  display.setFont(Roboto_10);
+  display.setFont(ArialMT_Plain_16);
   display.drawString(64, 32,  WiFi.localIP().toString());
   display.display();
   delay(500);
@@ -249,9 +255,14 @@ void loop() {
   DHTServerResponse();
 
   // juhe weather API
-  if (millis() - timeSinceLastWeatherAPI > 3600000) {
+  if (millis() - timeSinceLastWeatherAPI >= 3600000) {
     weatherUpdate();
     timeSinceLastWeatherAPI = millis();
+  }
+
+  if (millis() - timeSinceLastPing >= 10000) {
+    icmpPing();
+    timeSinceLastPing = millis();
   }
 
   // if (millis() - timeSinceLastDHT > 10000) {
@@ -265,7 +276,8 @@ void loop() {
     // timeSinceLastHttpRequest = millis();
   // }
 
-  if (millis() - timeSinceLastClock > 1000) {
+  if (millis() - timeSinceLastClock >= 1000) {
+  // delay(1000);
     OLEDDisplayCtl();
     timeSinceLastClock = millis();
   }
@@ -309,6 +321,15 @@ void loop() {
 //   display2.display();
 // }
 
+void icmpPing(){
+      bool ret = Ping.ping(icmpPingDomain, 1);
+      if(ret){
+         pingTimeStr = (String)Ping.averageTime();
+      }else{
+         pingTimeStr = "FAILED";
+      }
+}
+
 void OLEDDisplayCtl() {
 
   display.clear();
@@ -331,17 +352,53 @@ void OLEDDisplayCtl() {
   // weather API weather
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(Roboto_14);
-  display.drawString(26, 3, (String)temperatureOnline + " / " +
-                                 (String)humidityOnline);
+  display.drawString(26, 3, (String)temperatureOnline + "-" + (String)humidityOnline + "-" + (String)pm25Online);
 
   display.setTextAlignment(TEXT_ALIGN_LEFT);
   display.setFont(Meteocons_Plain_21);
   display.drawString(0, 0, weatherImgMapping[weatherImg]);
 
+  // center area
+  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
+  display.setFont(Roboto_Black_32);
+  display.drawString(64, 34, pingTimeStr);
+
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.setFont(Roboto_10);
+  display.drawString(128, 34, "ms");
 
   // clock
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
-  display.setFont(Roboto_Black_48);
+  // display.setTextAlignment(TEXT_ALIGN_LEFT);
+  // display.setFont(Roboto_Black_48);
+  // time_t hourInt = hour();
+  // String hourStr;
+  // if (10 > hourInt) {
+  //   hourStr = "0" + (String)hourInt;
+  // } else {
+  //   hourStr = (String)hourInt;
+  // }
+  // display.drawString(0, 19, hourStr);
+  //
+  // display.setTextAlignment(TEXT_ALIGN_CENTER);
+  // display.setFont(Roboto_Black_18);
+  // display.drawString(64, 27, ":");
+  //
+  // display.setTextAlignment(TEXT_ALIGN_CENTER);
+  // display.setFont(Roboto_14);
+  // display.drawString(64, 47, (String)second());
+  //
+  // display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  // display.setFont(Roboto_Black_48);
+  // time_t minuteInt = minute();
+  // String minuteStr;
+  // if (10 > minuteInt) {
+  //   minuteStr = "0" + (String)minuteInt;
+  // } else {
+  //   minuteStr = (String)minuteInt;
+  // }
+  // display.drawString(128, 19, minuteStr);
+
+  //hour
   time_t hourInt = hour();
   String hourStr;
   if (10 > hourInt) {
@@ -349,18 +406,7 @@ void OLEDDisplayCtl() {
   } else {
     hourStr = (String)hourInt;
   }
-  display.drawString(0, 19, hourStr);
-
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.setFont(Roboto_Black_18);
-  display.drawString(64, 27, ":");
-
-  display.setTextAlignment(TEXT_ALIGN_CENTER);
-  display.setFont(Roboto_14);
-  display.drawString(64, 47, (String)second());
-
-  display.setTextAlignment(TEXT_ALIGN_RIGHT);
-  display.setFont(Roboto_Black_48);
+  //minute
   time_t minuteInt = minute();
   String minuteStr;
   if (10 > minuteInt) {
@@ -368,7 +414,21 @@ void OLEDDisplayCtl() {
   } else {
     minuteStr = (String)minuteInt;
   }
-  display.drawString(128, 19, minuteStr);
+  //second
+  time_t secondInt = second();
+  String secondStr;
+  if (10 > secondInt) {
+    secondStr = "0" + (String)secondInt;
+  } else {
+    secondStr = (String)secondInt;
+  }
+
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(0, 48,Months[month() - 1] + ". " + (String)day() );
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.setFont(ArialMT_Plain_16);
+  display.drawString(128, 48, hourStr + ":" + minuteStr + ":" + secondStr);
 
   display.display();
 }
