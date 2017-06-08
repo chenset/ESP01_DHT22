@@ -472,7 +472,7 @@ void webBenchmark() {
   if(httpCode > 0) {
     webBenchmarkHTTPCodeStr = (String)httpCode;
   } else {
-    webBenchmarkHTTPCodeStr = "FAILED";
+    webBenchmarkHTTPCodeStr = "ERR";
   }
 
   webBenchmarkStr = (String) (millis() - start - fix);
