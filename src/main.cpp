@@ -2,6 +2,7 @@
 #include <DHT.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
+#include <ESP8266Ping.h>
 #include <WiFiClient.h>
 #include <WiFiUdp.h>
 #include "SSD1306Brzo.h"
@@ -55,8 +56,15 @@ const int timeZone = +8;
 const char* webBenchmarkUrl = envWebBenchmarkUrl;
 const char* webBenchmarkFingerprint = envWebBenchmarkFingerprint;
 String webBenchmarkHTTPCodeStr = "-";
-String webBenchmarkStr = "WEB";
+String webBenchmarkStr = "-";
 void webBenchmark();
+
+//icmp ping
+const char* icmpPingDomain = envIcmpPingDomain;
+String pingTimeStr = "-";
+void icmpPing();
+
+
 
 // DHT sensor settings
 // #define DHTPIN 5     // what digital pin we're connected to
@@ -147,6 +155,7 @@ unsigned long timeSinceLastClock = 0;
 unsigned long timeSinceLastDHT = 0;
 unsigned long timeSinceLastWEB = 0;
 unsigned long timeSinceLastWeatherAPI = 0;
+unsigned long timeSinceLastPing = 0;
 
 // DHT variables
 float humidity = 0.00;
@@ -268,15 +277,15 @@ void loop() {
     timeSinceLastWeatherAPI = millis();
   }
 
-  if (millis() - timeSinceLastWEB >= 10000) {
+  if (millis() - timeSinceLastWEB >= 12345) {
     webBenchmark();
     timeSinceLastWEB = millis();
   }
 
-  // if (millis() - timeSinceLastDHT > 10000) {
-    // DHTSenserUpdate();
-    // timeSinceLastDHT = millis();
-  // }
+  if (millis() - timeSinceLastPing >= 5579) {
+    icmpPing();
+    timeSinceLastPing = millis();
+  }
 
   // Use WiFiClient class to create TCP connections
   // if (millis() - timeSinceLastHttpRequest > 900000) {
@@ -323,14 +332,14 @@ void loop() {
 //   display2.display();
 // }
 
-// void icmpPing(){
-//       bool ret = Ping.ping(icmpPingDomain, 1);
-//       if(ret){
-//          pingTimeStr = (String)Ping.averageTime();
-//       }else{
-//          pingTimeStr = "FAILED";
-//       }
-// }
+void icmpPing(){
+      bool ret = Ping.ping(icmpPingDomain, 1);
+      if(ret){
+         pingTimeStr = (String)Ping.averageTime();
+      }else{
+         pingTimeStr = "ERR";
+      }
+}
 
 void OLEDDisplayCtl() {
 
@@ -360,18 +369,21 @@ void OLEDDisplayCtl() {
   display.setFont(Meteocons_Plain_21);
   display.drawString(0, 0, weatherImgMapping[weatherImg]);
 
-  // center area
-  display.setTextAlignment(TEXT_ALIGN_CENTER_BOTH);
-  display.setFont(Roboto_Black_32);
-  display.drawString(64, 34, webBenchmarkStr);
-
+  // web benchmarks
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
+  display.setFont(Roboto_Black_24);
+  display.drawString(105, 20, webBenchmarkStr);
   display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(Roboto_10);
-  display.drawString(128, 34, "ms");
-
-  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.drawString(128, 23, webBenchmarkHTTPCodeStr);
+  display.setTextAlignment(TEXT_ALIGN_RIGHT);
   display.setFont(Roboto_10);
-  display.drawString(0, 34, webBenchmarkHTTPCodeStr);
+  display.drawString(128, 33, "ms");
+
+  // icmp ping
+  display.setTextAlignment(TEXT_ALIGN_LEFT);
+  display.setFont(Roboto_Black_24);
+  display.drawString(0, 20, pingTimeStr);
 
   // clock
   // display.setTextAlignment(TEXT_ALIGN_LEFT);
@@ -462,7 +474,7 @@ void webBenchmark() {
   } else {
     webBenchmarkHTTPCodeStr = "FAILED";
   }
-  
+
   webBenchmarkStr = (String) (millis() - start - fix);
   http.end();
 }
