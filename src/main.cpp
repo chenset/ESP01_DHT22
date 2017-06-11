@@ -2,11 +2,8 @@
 #include <DHT.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
-#include <ESP8266Ping.h>
 #include <WiFiClient.h>
-#include <WiFiUdp.h>
 #include <ESP8266HTTPClient.h>
-#include <TimeLib.h>
 
 //only define const char *ssid & const char *password in env.h
 #include "env.h"
@@ -32,24 +29,6 @@ String chipName = "two";
 
 // WIFI
 const char *host = chipName.c_str();
-// const char *ssid = ""; move to env.h
-// const char *password = ""; move to env.h
-
-// NTP time server
-// const char *ntpServerName = "time.nist.gov";
-// const char *ntpServerName = "cn.ntp.org.cn";
-const char *ntpServerName = "1.asia.pool.ntp.org";
-
-// init DHT WEB Server
-WiFiServer DHTServer(80);
-
-// UDP for ntp server
-WiFiUDP Udp;
-unsigned int localPort = 8888; // local port to listen for UDP packets
-
-// Time Zone
-const int timeZone = +8;
-
 
 
 // DHT sensor settings
@@ -57,14 +36,6 @@ const int timeZone = +8;
 #define DHTTYPE DHT22 // DHT 22  (AM2302), AM2321
 DHT dht(DHTPIN, DHTTYPE);
 
-// Initialize the OLED display using brzo_i2c
-// D1 -> SDA
-// D2 -> SCL
-// SSD1306Brzo display(0x3c, D1, D2);
-// or
-// SH1106Wire display2(0x3c, D3, D5);
-//
-// int counter = 1;
 
 // Baud
 const int baud = 115200;
@@ -74,11 +45,6 @@ char *nasHost = "10.0.0.2";
 const int httpPort = 88;
 const char *url = "/sensor/upload";
 
-//  Time since
-unsigned long timeSinceLastHttpRequest = 0;
-unsigned long timeSinceLastClock = 0;
-unsigned long timeSinceLastDHT = 0;
-
 // DHT variables
 float humidity = 0.00;
 float temperature = 0.00;
@@ -86,18 +52,8 @@ float temperature = 0.00;
 // void OLEDDisplay2Ctl();
 void DHTSenserPost();
 void DHTSenserUpdate();
-void DHTServerResponse();
-void sendNTPpacket(IPAddress &address);
 String getSensorsJson();
-time_t getNtpTime();
 
-// NTP var
-const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
-byte packetBuffer[NTP_PACKET_SIZE]; // buffer to hold incoming & outgoing
-                                    // packets
-// return lastNtpTime if unable to get the time
-time_t lastNtpTime = 0;
-unsigned long lastNtpTimeFix = 0;
 
 void setup() {
   // Serial
@@ -112,43 +68,15 @@ void setup() {
     Serial.println("WiFi Failed");
   }
 
-  // OTA
-  // ArduinoOTA.onStart([]() { Serial.println("Start"); });
-  // ArduinoOTA.onEnd([]() { Serial.println("\nEnd"); });
-  // ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-  //   Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  // });
-  // ArduinoOTA.onError([](ota_error_t error) {
-  //   Serial.printf("Error[%u]: ", error);
-  //   if (error == OTA_AUTH_ERROR)
-  //     Serial.println("Auth Failed");
-  //   else if (error == OTA_BEGIN_ERROR)
-  //     Serial.println("Begin Failed");
-  //   else if (error == OTA_CONNECT_ERROR)
-  //     Serial.println("Connect Failed");
-  //   else if (error == OTA_RECEIVE_ERROR)
-  //     Serial.println("Receive Failed");
-  //   else if (error == OTA_END_ERROR)
-  //     Serial.println("End Failed");
-  // });
-  // ArduinoOTA.begin();
-
   Serial.println("");
   Serial.println("WiFi connected");
 
   // Print the IP address
   delay(500);
 
-  // DHT WEB Server begin
-  DHTServer.begin();
-  // DHT
-  // dht.begin();
-
   DHTSenserUpdate();
-  timeSinceLastDHT = millis();
 
   DHTSenserPost();
-  timeSinceLastHttpRequest = millis();
 }
 
 void loop() {
@@ -175,46 +103,6 @@ void loop() {
   // delay(10000);
   // Serial.println("ESP8266 in sleep mode");
   // ESP.deepSleep(10000000);
-}
-
-
-void DHTServerResponse() {
-  // Check if a client has connected
-  WiFiClient client = DHTServer.available();
-  if (!client) {
-    return;
-  }
-
-  // Wait until the client sends some data
-  Serial.println("new client");
-  unsigned long start = millis();
-
-  while (!client.available()) {
-    delay(1);
-
-    if (millis() - start > 1000) {
-      Serial.println("time out");
-      return;
-    }
-  }
-
-  // Read the first line of the request
-  String req = client.readStringUntil('\r');
-  Serial.println(req);
-  client.flush();
-
-  // Prepare the response
-  String s = "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n";
-  s += getSensorsJson();
-  s += "\n";
-
-  // Send the response to the client
-  client.print(s);
-
-  client.flush();
-  client.stop();
-  delay(1);
-  Serial.println("Client disonnected");
 }
 
 void DHTSenserUpdate() {
@@ -253,27 +141,6 @@ void DHTSenserPost() {
   }
 }
 
-// send an NTP request to the time server at the given address
-void sendNTPpacket(IPAddress &address) {
-  // set all bytes in the buffer to 0
-  memset(packetBuffer, 0, NTP_PACKET_SIZE);
-  // Initialize values needed to form NTP request
-  // (see URL above for details on the packets)
-  packetBuffer[0] = 0b11100011; // LI, Version, Mode
-  packetBuffer[1] = 0;          // Stratum, or type of clock
-  packetBuffer[2] = 6;          // Polling Interval
-  packetBuffer[3] = 0xEC;       // Peer Clock Precision
-  // 8 bytes of zero for Root Delay & Root Dispersion
-  packetBuffer[12] = 49;
-  packetBuffer[13] = 0x4E;
-  packetBuffer[14] = 49;
-  packetBuffer[15] = 52;
-  // all NTP fields have been given values, now
-  // you can send a packet requesting a timestamp:
-  Udp.beginPacket(address, 123); // NTP requests are to port 123
-  Udp.write(packetBuffer, NTP_PACKET_SIZE);
-  Udp.endPacket();
-}
 
 // sensors json
 String getSensorsJson() {
@@ -295,38 +162,4 @@ String getSensorsJson() {
   res += "\"}";
 
   return res;
-}
-
-time_t getNtpTime() {
-  IPAddress ntpServerIP; // NTP server's ip address
-
-  while (Udp.parsePacket() > 0)
-    ; // discard any previously received packets
-  Serial.println("Transmit NTP Request");
-  // get a random server from the pool
-  WiFi.hostByName(ntpServerName, ntpServerIP);
-  Serial.print(ntpServerName);
-  Serial.print(": ");
-  Serial.println(ntpServerIP);
-  sendNTPpacket(ntpServerIP);
-  uint32_t beginWait = millis();
-  while (millis() - beginWait < 5000) {
-    int size = Udp.parsePacket();
-    if (size >= NTP_PACKET_SIZE) {
-      Serial.println("Receive NTP Response");
-      Udp.read(packetBuffer, NTP_PACKET_SIZE); // read packet into the buffer
-      unsigned long secsSince1900;
-      // convert four bytes starting at location 40 to a long integer
-      secsSince1900 = (unsigned long)packetBuffer[40] << 24;
-      secsSince1900 |= (unsigned long)packetBuffer[41] << 16;
-      secsSince1900 |= (unsigned long)packetBuffer[42] << 8;
-      secsSince1900 |= (unsigned long)packetBuffer[43];
-      lastNtpTime = secsSince1900 - 2208988800UL + timeZone * SECS_PER_HOUR;
-      lastNtpTimeFix = millis();
-      return lastNtpTime;
-    }
-  }
-  Serial.println("No NTP Response :-(");
-  return lastNtpTime + ((int)(millis() - lastNtpTimeFix) /
-                        1000); // return lastNtpTime if unable to get the time
 }
