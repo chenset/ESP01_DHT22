@@ -1,4 +1,4 @@
-#include <ArduinoOTA.h>
+// #include <ArduinoOTA.h>
 #include <DHT.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266mDNS.h>
@@ -28,7 +28,7 @@
 // SSD1306Brzo display(0x3c, D1, D2);
 
 // Chip name
-String chipName = "tw32121o";
+String chipName = "two";
 
 // WIFI
 const char *host = chipName.c_str();
@@ -113,38 +113,31 @@ void setup() {
   }
 
   // OTA
-  ArduinoOTA.onStart([]() { Serial.println("Start"); });
-  ArduinoOTA.onEnd([]() { Serial.println("\nEnd"); });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR)
-      Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR)
-      Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR)
-      Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR)
-      Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR)
-      Serial.println("End Failed");
-  });
-  ArduinoOTA.begin();
+  // ArduinoOTA.onStart([]() { Serial.println("Start"); });
+  // ArduinoOTA.onEnd([]() { Serial.println("\nEnd"); });
+  // ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+  //   Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  // });
+  // ArduinoOTA.onError([](ota_error_t error) {
+  //   Serial.printf("Error[%u]: ", error);
+  //   if (error == OTA_AUTH_ERROR)
+  //     Serial.println("Auth Failed");
+  //   else if (error == OTA_BEGIN_ERROR)
+  //     Serial.println("Begin Failed");
+  //   else if (error == OTA_CONNECT_ERROR)
+  //     Serial.println("Connect Failed");
+  //   else if (error == OTA_RECEIVE_ERROR)
+  //     Serial.println("Receive Failed");
+  //   else if (error == OTA_END_ERROR)
+  //     Serial.println("End Failed");
+  // });
+  // ArduinoOTA.begin();
 
   Serial.println("");
   Serial.println("WiFi connected");
 
   // Print the IP address
   delay(500);
-
-  // init NTP UDP
-  Udp.begin(localPort);
-  // Serial.println(Udp.localPort());
-  // Serial.println("waiting for sync");
-  setSyncProvider(getNtpTime);
-  setSyncInterval(600);
 
   // DHT WEB Server begin
   DHTServer.begin();
@@ -156,41 +149,32 @@ void setup() {
 
   DHTSenserPost();
   timeSinceLastHttpRequest = millis();
-
-  // Sleep
-  Serial.println("wake up");
-
-  Serial.println(ESP.getChipId());
-  Serial.println(ESP.getCpuFreqMHz());
-  Serial.println(ESP.getBootMode());
-  Serial.println(ESP.getBootVersion());
-  Serial.println(ESP.getCoreVersion());
-  Serial.println(ESP.getCycleCount());
-  Serial.println(ESP.getResetInfo());
-  Serial.println(ESP.getVcc());
 }
 
 void loop() {
-    Serial.println("loop");
-    delay(1000);
+    // Serial.println("loop");
+    // delay(1000);
   // OTA
   // ArduinoOTA.handle();
   // DHTServerResponse();
   //
   // // Use WiFiClient class to create TCP connections
   // if (millis() - timeSinceLastHttpRequest >= 599990) {
-  //   DHTSenserPost();
+  delay(599990);
+  DHTSenserUpdate();
+  DHTSenserPost();
+
   //   timeSinceLastHttpRequest = millis();
   // }
   //
   // // if(millis() - timeSinceLastDHT >= 10000){
-  //   DHTSenserUpdate();
-  //   timeSinceLastDHT = millis();
+    // DHTSenserUpdate();
+    // timeSinceLastDHT = millis();
   // // }
   // Serial.println("test");
   // delay(10000);
-  Serial.println("ESP8266 in sleep mode");
-  ESP.deepSleep(10000000);
+  // Serial.println("ESP8266 in sleep mode");
+  // ESP.deepSleep(10000000);
 }
 
 
